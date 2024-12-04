@@ -2,19 +2,6 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Register a new restaurant
-export const registerRestaurant = async (restaurantData) => {
-  try {
-    const response = await axios.post(
-      `${API_BASE_URL}/restaurants/register`,
-      restaurantData
-    );
-    return response.data;
-  } catch (error) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
 export const addRestaurant = async (restaurantData) => {
   try {
     const response = await axios.post(
@@ -77,5 +64,49 @@ export const createSlots = async (restaurantId) => {
   } catch (error) {
     console.error("Error creating slots:", error);
     throw error;
+  }
+};
+
+// Service to fetch slots by restaurant ID
+export const fetchSlotsByRestaurant = async (restaurantId) => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/restaurants/${restaurantId}/slots/`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const today = new Date().toISOString().split("T")[0];
+    const slots = response.data.filter((slot) => slot.date >= today);
+
+    const dates = [...new Set(slots.map((slot) => slot.date))];
+    const slotObjects = slots.map(({ id, time, date }) => ({
+      date: date,
+      slot_id: id,
+      time,
+    }));
+
+    return { dates, slotObjects };
+  } catch (error) {
+    throw new Error("Error fetching slots");
+  }
+};
+
+export const bookTable = async (bookingDetails) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/restaurants/${bookingDetails.restaurant_id}/slots/${bookingDetails.slot_id}/book-api/`,
+      bookingDetails,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Error booking table");
   }
 };

@@ -5,6 +5,13 @@ import { Menu, X, UserCircle } from "lucide-react"; // Importing UserCircle icon
 const Navbar = ({ user }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState(""); // State to store the user's role
+
+  useEffect(() => {
+    // Get the role from localStorage
+    const role = localStorage.getItem("userRole");
+    setUserRole(role);
+  }, []); // Runs once when the component is mounted
 
   // Close the menu when clicking outside of it
   useEffect(() => {
@@ -40,18 +47,21 @@ const Navbar = ({ user }) => {
           >
             Home
           </Link>
-          <Link
-            to="/register"
-            className="text-white text-lg font-medium hover:text-blue-200"
-          >
-            Register Restaurant
-          </Link>
-          <Link
+
+          {userRole == "owner" && (
+            <Link
+              to="/register"
+              className="text-white text-lg font-medium hover:text-blue-200"
+            >
+              Register Restaurant
+            </Link>
+          )}
+          {/* <Link
             to="/book"
             className="text-white text-lg font-medium hover:text-blue-200"
           >
             Book Table
-          </Link>
+          </Link> */}
           <Link
             to="/restaurants"
             className="text-white text-lg font-medium hover:text-blue-200"
@@ -112,10 +122,7 @@ const Navbar = ({ user }) => {
         } transition-transform duration-300 ease-in-out z-50`}
       >
         <div className="flex justify-end p-4">
-          <button
-            className="text-white"
-            onClick={() => setIsMenuOpen(false)}
-          >
+          <button className="text-white" onClick={() => setIsMenuOpen(false)}>
             <X size={24} />
           </button>
         </div>
@@ -127,20 +134,23 @@ const Navbar = ({ user }) => {
           >
             Home
           </Link>
-          <Link
-            to="/register"
-            className="text-white text-lg font-medium hover:text-blue-200 py-2"
-            onClick={handleLinkClick}
-          >
-            Register Restaurant
-          </Link>
-          <Link
+
+          {userRole == "owner" && (
+            <Link
+              to="/register"
+              className="text-white text-lg font-medium hover:text-blue-200 py-2"
+              onClick={handleLinkClick}
+            >
+              Register Restaurant
+            </Link>
+          )}
+          {/* <Link
             to="/book"
             className="text-white text-lg font-medium hover:text-blue-200 py-2"
             onClick={handleLinkClick}
           >
             Book Table
-          </Link>
+          </Link> */}
           <Link
             to="/restaurants"
             className="text-white text-lg font-medium hover:text-blue-200 py-2"

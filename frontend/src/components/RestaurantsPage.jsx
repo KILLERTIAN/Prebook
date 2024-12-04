@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -24,6 +25,24 @@ const getRandomImage = () => {
 
 // Rename the RestaurantCard component properly
 const RestaurantCard = ({ restaurant }) => {
+  const navigate = useNavigate();
+  const [userRole, setUserRole] = useState(""); // State to store the user's role
+
+  useEffect(() => {
+    // Get the role from localStorage
+    const role = localStorage.getItem("userRole");
+    setUserRole(role);
+  }, []); // Runs once when the component is mounted
+
+  const handleBooking = () => {
+    if (userRole == "customer") {
+      navigate(`/book`, { state: { id: restaurant.id } }); // Navigate to /book route
+    } else {
+      alert("You need to be a customer to book a table.");
+    }
+    // alert(`Booking ${restaurantName}`);
+  };
+
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
       {/* Image */}
@@ -66,7 +85,7 @@ const RestaurantCard = ({ restaurant }) => {
         </div>
         {/* Book Button */}
         <button
-          onClick={() => alert(`Booking ${restaurant.name}`)}
+          onClick={handleBooking}
           className="block w-full bg-blue-600 text-white py-2 text-center rounded-lg font-semibold hover:bg-blue-700"
         >
           Book

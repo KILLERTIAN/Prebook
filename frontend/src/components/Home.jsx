@@ -23,7 +23,7 @@ const Home = () => {
 
         {/* Call-to-Action Buttons */}
         <div className="mt-8 flex justify-center space-x-4">
-          {userRole !== "customer" && ( // Conditionally render the Register Restaurant button
+          {userRole == "owner" && ( // Conditionally render the Register Restaurant button
             <a
               href="/register"
               className="bg-blue-600 text-white py-3 px-6 rounded-lg shadow-lg text-lg font-medium hover:bg-blue-700 focus:ring-4 focus:ring-blue-300"
