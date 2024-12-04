@@ -1,11 +1,13 @@
-import React, { useState } from "react";
-import { registerRestaurant } from "../services/restaurants";
+import React, { useState, useEffect } from "react";
+import { addRestaurant, addTables, createSlots } from "../services/restaurants";
 import { Trash2, SquareDot, Square } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const RegisterRestaurant = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [restaurantData, setRestaurantData] = useState({
-    owner: "",
+    owner: 0,
     name: "",
     city: "",
     area: "",
@@ -22,8 +24,23 @@ const RegisterRestaurant = () => {
   const [tables, setTables] = useState([{ capacity: "", quantity: "" }]);
 
   const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const timeSlotsAM = Array.from({ length: 12 }, (_, i) => `${i + 1}:00 AM`);
-  const timeSlotsPM = Array.from({ length: 12 }, (_, i) => `${i + 1}:00 PM`);
+  // Generate 24-hour time slots from 00:00 to 23:00 in one-hour intervals
+  const timeSlots24Hr = Array.from({ length: 8 }, (_, i) => {
+    const hour = 11 + i; // Start from 11:00:00
+    const formattedHour = hour < 10 ? `0${hour}` : hour; // Ensure 2-digit hour format
+    return `${formattedHour}:00:00`;
+  });
+
+  // Set owner from localStorage when component mounts
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    if (userId) {
+      setRestaurantData((prevData) => ({
+        ...prevData,
+        owner: userId, // Auto-fill the owner field
+      }));
+    }
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -58,21 +75,21 @@ const RegisterRestaurant = () => {
     }));
   };
 
-  const handleAMPMToggle = (period) => {
-    if (period === "AM") {
-      setRestaurantData({
-        ...restaurantData,
-        amSelected: !restaurantData.amSelected,
-        pmSelected: false,
-      });
-    } else if (period === "PM") {
-      setRestaurantData({
-        ...restaurantData,
-        pmSelected: !restaurantData.pmSelected,
-        amSelected: false,
-      });
-    }
-  };
+  // const handleAMPMToggle = (period) => {
+  //   if (period === "AM") {
+  //     setRestaurantData({
+  //       ...restaurantData,
+  //       amSelected: !restaurantData.amSelected,
+  //       pmSelected: false,
+  //     });
+  //   } else if (period === "PM") {
+  //     setRestaurantData({
+  //       ...restaurantData,
+  //       pmSelected: !restaurantData.pmSelected,
+  //       amSelected: false,
+  //     });
+  //   }
+  // };
 
   const handleTableChange = (index, e) => {
     const { name, value } = e.target;
@@ -92,14 +109,49 @@ const RegisterRestaurant = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const restData = {
+      owner: restaurantData.owner,
+      name: restaurantData.name,
+      city: restaurantData.city,
+      area: restaurantData.area,
+      cuisine: restaurantData.cuisine,
+      rating: 5,
+      cost_for_two: restaurantData.cost_for_two,
+      is_veg: restaurantData.is_veg,
+      working_days: restaurantData.working_days,
+      time_slots: restaurantData.time_slots,
+    };
+
     try {
-      const response = await registerRestaurant({
-        ...restaurantData,
-        tables,
-      });
-      alert(response.message);
+      // Step 1: Add Restaurant
+      const addRestaurantResponse = await addRestaurant(restData);
+      const restaurantId = addRestaurantResponse.id; // Assuming the response contains restaurant_id
+
+      if (!restaurantId) {
+        throw new Error(
+          "Failed to get restaurant ID from addRestaurant response."
+        );
+      }
+
+      const addTablesResponse = await addTables(restaurantId, tables);
+
+      if (!addTablesResponse.message.includes("success")) {
+        throw new Error("Failed to add tables.");
+      }
+
+      // Step 3: Create Slots
+      const createSlotsResponse = await createSlots(restaurantId);
+
+      if (!createSlotsResponse.length) {
+        throw new Error("Failed to create slots.");
+      }
+
+      // If all API calls succeed, show success message
+      alert("Restaurant, tables, and slots created successfully!");
+      navigate("/restaurants");
     } catch (error) {
-      alert(error.message || "Error registering restaurant");
+      alert(error.message || "Error occurred during the process");
     }
   };
 
@@ -120,9 +172,9 @@ const RegisterRestaurant = () => {
             className="rounded-lg w-full h-64 object-cover"
           />
         </div> */}
-        
+
         <div className="flex-1 z-[10]">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             {/* Step 1: Restaurant Details */}
             {step === 1 && (
               <div>
@@ -131,13 +183,15 @@ const RegisterRestaurant = () => {
                     htmlFor="owner"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    Owner Email
+                    Owner Id
                   </label>
                   <input
                     id="owner"
                     name="owner"
                     type="email"
                     placeholder="Enter owner's email"
+                    value={restaurantData.owner}
+                    disabled
                     onChange={handleInputChange}
                     className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -232,10 +286,11 @@ const RegisterRestaurant = () => {
                   <button
                     type="button"
                     onClick={() => handleVegNonVegSelection("veg")}
-                    className={`py-2 px-4 border rounded-lg ${restaurantData.is_veg
+                    className={`py-2 px-4 border rounded-lg ${
+                      restaurantData.is_veg
                         ? "bg-green-500 text-white"
                         : "bg-green-200 text-green-800"
-                      } focus:outline-none hover:bg-green-400`}
+                    } focus:outline-none hover:bg-green-400`}
                   >
                     {/* <CheckSquare className="inline mr-2" /> */}
                     <SquareDot strokeWidth={3} className="inline mr-2" />
@@ -244,10 +299,11 @@ const RegisterRestaurant = () => {
                   <button
                     type="button"
                     onClick={() => handleVegNonVegSelection("non-veg")}
-                    className={`py-2 px-4 border rounded-lg ${!restaurantData.is_veg
+                    className={`py-2 px-4 border rounded-lg ${
+                      !restaurantData.is_veg
                         ? "bg-red-500 text-white"
                         : "bg-red-200 text-red-800"
-                      } focus:outline-none hover:bg-red-400`}
+                    } focus:outline-none hover:bg-red-400`}
                   >
                     <SquareDot strokeWidth={3} className="inline mr-2" />
                     Non-Veg
@@ -269,10 +325,11 @@ const RegisterRestaurant = () => {
                         key={day}
                         type="button"
                         onClick={() => handleDaySelection(day)}
-                        className={`px-4 py-2 border rounded-lg ${restaurantData.working_days.includes(day)
+                        className={`px-4 py-2 border rounded-lg ${
+                          restaurantData.working_days.includes(day)
                             ? "bg-blue-500 text-white"
                             : "bg-gray-200 text-gray-700"
-                          } focus:outline-none hover:bg-blue-400`}
+                        } focus:outline-none hover:bg-blue-400`}
                       >
                         {day}
                       </button>
@@ -284,58 +341,21 @@ const RegisterRestaurant = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Time Slots
                   </label>
-                  <div className="flex space-x-4 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => handleAMPMToggle("AM")}
-                      className={`px-4 py-2 border rounded-lg mb-2 ${restaurantData.amSelected
-                          ? "bg-yellow-500 text-white"
-                          : "bg-yellow-200 text-yellow-800"
-                        } focus:outline-none hover:bg-yellow-400`}
-                    >
-                      AM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAMPMToggle("PM")}
-                      className={`px-4 py-2 border rounded-lg mb-2 ${restaurantData.pmSelected
-                          ? "bg-yellow-500 text-white"
-                          : "bg-yellow-200 text-yellow-800"
-                        } focus:outline-none hover:bg-yellow-400`}
-                    >
-                      PM
-                    </button>
-                  </div>
-
                   <div className="flex flex-wrap gap-2">
-                    {restaurantData.amSelected &&
-                      timeSlotsAM.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => handleTimeSlotSelection(time)}
-                          className={`px-3 py-1 border rounded-lg ${restaurantData.time_slots.includes(time)
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-200 text-gray-700"
-                            } focus:outline-none hover:bg-green-400`}
-                        >
-                          {time}
-                        </button>
-                      ))}
-                    {restaurantData.pmSelected &&
-                      timeSlotsPM.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => handleTimeSlotSelection(time)}
-                          className={`px-3 py-1 border rounded-lg ${restaurantData.time_slots.includes(time)
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-200 text-gray-700"
-                            } focus:outline-none hover:bg-green-400`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                    {timeSlots24Hr.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => handleTimeSlotSelection(time)}
+                        className={`px-3 py-1 border rounded-lg ${
+                          restaurantData.time_slots.includes(time)
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-200 text-gray-700"
+                        } focus:outline-none hover:bg-green-400`}
+                      >
+                        {time}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -405,7 +425,10 @@ const RegisterRestaurant = () => {
               {step > 1 && (
                 <button
                   type="button"
-                  onClick={() => setStep(step - 1)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setStep(step - 1);
+                  }}
                   className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg shadow-md hover:bg-gray-400"
                 >
                   Previous
@@ -414,7 +437,10 @@ const RegisterRestaurant = () => {
               {step < 3 ? (
                 <button
                   type="button"
-                  onClick={() => setStep(step + 1)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setStep(step + 1);
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700"
                 >
                   Next
@@ -422,6 +448,7 @@ const RegisterRestaurant = () => {
               ) : (
                 <button
                   type="submit"
+                  onClick={handleSubmit}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-700"
                 >
                   Submit
