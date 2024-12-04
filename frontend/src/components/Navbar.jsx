@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, UserCircle } from "lucide-react"; // Importing UserCircle icon
 
@@ -6,61 +6,75 @@ const Navbar = ({ user }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
+  // Close the menu when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMenuOpen && !event.target.closest(".mobile-menu")) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
+  const handleLinkClick = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
-    <nav className="bg-blue-600 shadow-lg py-4 h-[70px] z-50">
-      <div className="container px-4 sm:px-10 flex justify-between items-center w-full">
+    <nav className="bg-blue-600 shadow-lg py-4 h-[70px] z-[999]">
+      <div className="px-4 sm:px-10 flex justify-between items-center w-full">
         {/* Logo or Brand Name */}
         <div className="text-white text-2xl font-bold">
           <Link to="/">Prebook</Link>
         </div>
 
-        {/* Hamburger Menu Icon */}
-        <button
-          className="sm:hidden text-white"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-
-        {/* Navigation Links */}
-        <div
-          className={`${
-            isMenuOpen ? "block" : "hidden"
-          } sm:flex space-x-6 absolute sm:static top-[70px] left-0 w-full sm:w-auto bg-blue-600 sm:bg-transparent sm:space-x-6 flex-col sm:flex-row sm:items-center`}
-        >
+        {/* Desktop Menu */}
+        <div className="hidden md:flex space-x-6">
           <Link
             to="/"
-            className="text-white text-lg font-medium hover:text-blue-200 transition duration-300 py-2 sm:py-0 px-4 sm:px-0"
+            className="text-white text-lg font-medium hover:text-blue-200"
           >
             Home
           </Link>
           <Link
             to="/register"
-            className="text-white text-lg font-medium hover:text-blue-200 transition duration-300 py-2 sm:py-0 px-4 sm:px-0"
+            className="text-white text-lg font-medium hover:text-blue-200"
           >
             Register Restaurant
           </Link>
           <Link
             to="/book"
-            className="text-white text-lg font-medium hover:text-blue-200 transition duration-300 py-2 sm:py-0 px-4 sm:px-0"
+            className="text-white text-lg font-medium hover:text-blue-200"
           >
             Book Table
           </Link>
           <Link
             to="/restaurants"
-            className="text-white text-lg font-medium hover:text-blue-200 transition duration-300 py-2 sm:py-0 px-4 sm:px-0"
+            className="text-white text-lg font-medium hover:text-blue-200"
           >
             Restaurants
           </Link>
           {!user && (
             <Link
               to="/login"
-              className="text-white text-lg font-medium hover:text-blue-200 transition duration-300 py-2 sm:py-0 px-4 sm:px-0"
+              className="text-white text-lg font-medium hover:text-blue-200"
             >
               Login
             </Link>
           )}
         </div>
+
+        {/* Hamburger Menu Icon */}
+        <button
+          className="md:hidden text-white"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
 
         {/* User Icon */}
         {user && (
@@ -87,6 +101,63 @@ const Navbar = ({ user }) => {
             )}
           </div>
         )}
+      </div>
+
+      {/* Mobile Menu */}
+      <div
+        className={`mobile-menu ${
+          isMenuOpen ? "block" : "hidden"
+        } md:hidden fixed top-0 right-0 h-full w-64 bg-blue-600 shadow-lg transform ${
+          isMenuOpen ? "translate-x-0" : "translate-x-full"
+        } transition-transform duration-300 ease-in-out z-50`}
+      >
+        <div className="flex justify-end p-4">
+          <button
+            className="text-white"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <X size={24} />
+          </button>
+        </div>
+        <div className="flex flex-col items-center mt-8">
+          <Link
+            to="/"
+            className="text-white text-lg font-medium hover:text-blue-200 py-2"
+            onClick={handleLinkClick}
+          >
+            Home
+          </Link>
+          <Link
+            to="/register"
+            className="text-white text-lg font-medium hover:text-blue-200 py-2"
+            onClick={handleLinkClick}
+          >
+            Register Restaurant
+          </Link>
+          <Link
+            to="/book"
+            className="text-white text-lg font-medium hover:text-blue-200 py-2"
+            onClick={handleLinkClick}
+          >
+            Book Table
+          </Link>
+          <Link
+            to="/restaurants"
+            className="text-white text-lg font-medium hover:text-blue-200 py-2"
+            onClick={handleLinkClick}
+          >
+            Restaurants
+          </Link>
+          {!user && (
+            <Link
+              to="/login"
+              className="text-white text-lg font-medium hover:text-blue-200 py-2"
+              onClick={handleLinkClick}
+            >
+              Login
+            </Link>
+          )}
+        </div>
       </div>
     </nav>
   );

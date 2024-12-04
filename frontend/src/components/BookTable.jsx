@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { bookTable } from "../services/bookings";
+import axios from "axios";
 
 const BookTable = () => {
   const [formData, setFormData] = useState({
@@ -9,28 +10,79 @@ const BookTable = () => {
     customer_name: "",
     date: "",
   });
+  const [restaurantData, setRestaurantData] = useState(null);
+  const [disabledDates, setDisabledDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
+  useEffect(() => {
+    const fetchRestaurantData = async () => {
+      try {
+        const response = await axios.get(
+          "https://restro-api-33n2.onrender.com/restaurants/1"
+        );
+        setRestaurantData(response.data);
+        setDisabledDates(getDisabledDays(response.data.working_days));
+        setFormData((prev) => ({
+          ...prev,
+          restaurant_name: response.data.name,
+        }));
+      } catch (error) {
+        console.error("Error fetching restaurant data:", error);
+      }
+    };
+
+    fetchRestaurantData();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedDate || !selectedSlot) {
+      alert("Please select a date and a time slot.");
+      return;
+    }
     try {
-      const response = await bookTable(formData);
-      alert(response.message);
+      const response = await bookTable({ ...formData, date: selectedDate, slot_time: selectedSlot });
+      alert(response.message || "Table booked successfully!");
     } catch (error) {
       alert(error.message || "Error booking table");
     }
   };
 
+  const getDisabledDays = (workingDays) => {
+    const allDays = [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+    ];
+    return allDays.filter((day) => !workingDays.includes(day));
+  };
+
+  const generateWeekDates = () => {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      return {
+        isoDate: date.toISOString().split("T")[0],
+        displayDate: date.toLocaleDateString("en-US", {
+          weekday: "short",
+          // month: "short",
+          day: "numeric",
+        }),
+        dayName: date.toLocaleDateString("en-US", { weekday: "long" }),
+      };
+    });
+  };
+
+  const availableDates = generateWeekDates();
+
   return (
     <div className="relative bg-gray-100 min-h-screen flex items-center justify-center py-10">
-      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-50"
         style={{
@@ -38,47 +90,64 @@ const BookTable = () => {
           filter: "blur(10px)",
         }}
       ></div>
-      
-      {/* Form Container */}
+
       <div className="relative bg-white shadow-lg rounded-lg p-8 max-w-lg w-full z-10 border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
           Book a Table
         </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Restaurant Name */}
+          {/* Date Selection */}
           <div>
-            <label
-              htmlFor="restaurant_name"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Restaurant Name
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select a Date
             </label>
-            <input
-              id="restaurant_name"
-              name="restaurant_name"
-              type="text"
-              placeholder="Enter restaurant name"
-              onChange={handleInputChange}
-              className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
+            <div className="flex flex-wrap gap-2">
+              {availableDates.map(({ isoDate, displayDate, dayName }) => (
+                <button
+                  key={isoDate}
+                  type="button"
+                  onClick={() => setSelectedDate(isoDate)}
+                  disabled={disabledDates.includes(dayName)}
+                  className={`px-4 py-2 border rounded-lg ${
+                    selectedDate === isoDate
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200 text-gray-700"
+                  } ${
+                    disabledDates.includes(dayName)
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-blue-400"
+                  }`}
+                >
+                  {displayDate}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Slot Time */}
-          <div>
-            <label
-              htmlFor="slot_time"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Slot Time
-            </label>
-            <input
-              id="slot_time"
-              name="slot_time"
-              type="time"
-              onChange={handleInputChange}
-              className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+          {/* Slot Selection */}
+          {selectedDate && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select a Time Slot
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {restaurantData?.time_slots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`px-4 py-2 border rounded-lg ${
+                      selectedSlot === slot
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-700"
+                    } hover:bg-green-400`}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Number of People */}
           <div>
@@ -94,8 +163,10 @@ const BookTable = () => {
               type="number"
               min="1"
               max="20"
-              placeholder="Enter number of people"
-              onChange={handleInputChange}
+              value={formData.people}
+              onChange={(e) =>
+                setFormData({ ...formData, people: e.target.value })
+              }
               className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -112,25 +183,11 @@ const BookTable = () => {
               id="customer_name"
               name="customer_name"
               type="text"
+              value={formData.customer_name}
+              onChange={(e) =>
+                setFormData({ ...formData, customer_name: e.target.value })
+              }
               placeholder="Enter your name"
-              onChange={handleInputChange}
-              className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Booking Date */}
-          <div>
-            <label
-              htmlFor="date"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Booking Date
-            </label>
-            <input
-              id="date"
-              name="date"
-              type="date"
-              onChange={handleInputChange}
               className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
